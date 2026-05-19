@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KT Auditory Workflow Control Panel</title>
+<style>
+:root{
+  --navy:#07162f;--blue:#174f9f;--red:#c91f25;--green:#2f7d3a;
+  --purple:#7d43b1;--border:#d9dee8;--text:#0f172a;--muted:#667085;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:14px;background:#f4f6fa;font-family:Inter,Arial,sans-serif;color:var(--text)}
+.topbar{height:72px;background:linear-gradient(90deg,#07162f,#0b1d3f);color:white;border-radius:10px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;box-shadow:0 2px 8px rgba(8,20,46,.15)}
+.brand{display:flex;align-items:center;gap:18px}
+.iconbox{width:50px;height:50px;border-radius:8px;background:rgba(255,255,255,.08);display:grid;place-items:center;font-size:30px}
+h1{font-size:30px;margin:0;font-weight:800;letter-spacing:-.5px}
+.clear-top{border:1px solid rgba(255,255,255,.35);background:transparent;color:white;border-radius:8px;padding:12px 22px;font-size:16px;font-weight:700;cursor:pointer}
+.main{display:grid;grid-template-columns:1.1fr 1.45fr 1.35fr;gap:18px;margin-top:18px}
+.panel{background:white;border:1px solid var(--border);border-radius:12px;padding:18px;min-height:790px;box-shadow:0 1px 6px rgba(20,35,70,.04)}
+.panel-title{display:flex;align-items:center;gap:12px;color:#104a94;font-size:20px;font-weight:800;letter-spacing:.2px;margin:0 0 20px;text-transform:uppercase}
+.line{border-top:1px solid #e7eaf0;margin:18px 0}
+.section-title{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:800;margin:22px 0 14px}
+.sym{color:#1558a8;font-size:22px;width:26px;text-align:center}
+.state-row{display:grid;grid-template-columns:1fr 175px;gap:14px;align-items:center;margin:14px 0;font-size:17px}
+select{width:100%;padding:12px;border:1px solid #d4d9e4;border-radius:8px;background:white;font-size:15px;color:#1f2937}
+.med-table{width:100%;border-collapse:collapse;border:1px solid #dfe4ec;font-size:13px}
+.med-table th{background:linear-gradient(180deg,#e8edf5,#dfe5ee);text-align:left;padding:9px;font-weight:800;color:#1b2740}
+.med-table td{padding:9px;border-top:1px solid #e4e8ef;border-right:1px solid #e4e8ef;vertical-align:top}
+.notes{width:100%;height:105px;border:1px solid #d4d9e4;border-radius:8px;padding:14px;font-size:15px;color:#667085;resize:none}
+.card{border:1px solid #d7dde8;border-radius:8px;padding:13px 18px;margin:10px 0;background:white;display:grid;grid-template-columns:44px 1fr;align-items:center;min-height:70px}
+.card-icon{font-size:22px;color:#1558a8;text-align:center;font-weight:800}
+.card .label{color:#667085;font-size:14px;margin-bottom:5px}
+.card .value{font-size:19px;font-weight:800}
+.card.alert .card-icon,.card.alert .value{color:var(--red)}
+.response{border:1px solid #bdd5f4;background:linear-gradient(180deg,#f7fbff,#eef7ff);min-height:150px;align-items:start;padding-top:18px}
+.response .value{font-size:21px;line-height:1.45;max-width:470px}
+.voice-title{display:flex;align-items:center;gap:10px;color:#104a94;font-weight:800;font-size:18px;margin:20px 0 12px}
+.voice-input{width:100%;height:44px;border:1px solid #d4d9e4;border-radius:8px;padding:0 16px;font-size:15px}
+.primary{margin-top:14px;background:#1558bd;color:white;border:none;border-radius:7px;padding:13px 24px;font-weight:800;font-size:15px;cursor:pointer;box-shadow:0 3px 7px rgba(21,88,189,.25)}
+.action-box{border:1px solid #e0e4ec;border-radius:10px;padding:14px;margin-bottom:12px}
+.action-box h3{font-size:17px;margin:4px 0 14px;color:#13213b}
+.btn-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+button.action{min-height:50px;border-radius:7px;background:white;font-weight:800;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;text-align:center}
+.blue{border:1.5px solid #2264b8;color:#174f9f}.green{border:1.5px solid #4d9a58;color:#277034}.purple{border:1.5px solid #8d5fc1;color:#7138a5}.gray{border:1.5px solid #b9c2d0;color:#384152}.red{border:1.5px solid #c91f25;color:#c91f25}.wide{grid-column:span 2}
+.footer{margin-top:18px;background:white;border:1px solid var(--border);border-radius:12px;min-height:78px;display:grid;grid-template-columns:300px 1fr 1fr 1.4fr 200px;align-items:center;gap:20px;padding:14px 22px}
+.quick{display:flex;align-items:center;gap:14px;color:#104a94;font-weight:800;font-size:18px}
+.footitem{border-left:1px solid #dfe4ec;padding-left:22px;font-size:14px}.footitem b{color:#104a94}
+.ready{display:flex;align-items:center;justify-content:flex-end;gap:14px;font-weight:800}.pill{background:#dff6e6;color:#1f5130;border-radius:22px;padding:10px 18px}.dot{display:inline-block;width:11px;height:11px;border-radius:50%;background:#19c759;margin-right:8px}
+@media(max-width:1200px){.main{grid-template-columns:1fr}.panel{min-height:auto}.footer{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><div class="iconbox">🎧</div><h1>KT Auditory Workflow Control Panel</h1></div>
+  <button class="clear-top" onclick="stopAudio()">Hey KT Stop</button>
+</header>
+
+<main class="main">
+<section class="panel">
+  <h2 class="panel-title">📋 Simulation State</h2>
+  <div class="line"></div>
+
+  <div class="section-title"><span class="sym">⌖</span> Staff Locations</div>
+  <div class="state-row"><div>Ashley Smith</div><select id="ashley"><option>Room 43</option><option>Room 44</option><option>Medication Room A</option><option>Medication Room B</option></select></div>
+  <div class="state-row"><div>Jennifer Johnson</div><select id="jennifer"><option>Room 35</option><option>Room 36</option><option>Medication Room A</option><option>Medication Room B</option></select></div>
+
+  <div class="line"></div>
+  <div class="section-title"><span class="sym">▣</span> Medication Schedule</div>
+  <table class="med-table">
+    <thead><tr><th>Patient</th><th>Room</th><th>Medication</th><th>Dose</th><th>Due</th><th>Location</th><th>Nurse</th></tr></thead>
+    <tbody>
+      <tr><td>Jones</td><td>43</td><td>Heparin</td><td>5 units</td><td>10 min</td><td>Med Cart A, drawer 2</td><td>Ashley</td></tr>
+      <tr><td>Jones</td><td>43</td><td>Furosemide</td><td>0.5 mg</td><td>15 min</td><td>Medication Room B</td><td>Ashley</td></tr>
+      <tr><td>Martinez</td><td>44</td><td>Milrinone</td><td>0.75 mcg</td><td>20 min</td><td>Med Cart B, drawer 1</td><td>Ashley</td></tr>
+      <tr><td>Martinez</td><td>44</td><td>Fentanyl</td><td>1 mcg</td><td>5 min</td><td>Med Cart A, drawer 3</td><td>Ashley</td></tr>
+      <tr><td>Davis</td><td>35</td><td>Furosemide</td><td>1 mg</td><td>Now</td><td>Medication Room A</td><td>Jennifer</td></tr>
+      <tr><td>Davis</td><td>35</td><td>Milrinone</td><td>0.5 mcg</td><td>10 min</td><td>Pharmacy pickup bin</td><td>Jennifer</td></tr>
+      <tr><td>Miller</td><td>36</td><td>Fentanyl</td><td>2 mcg</td><td>15 min</td><td>Pharmacy pickup bin</td><td>Jennifer</td></tr>
+      <tr><td>Miller</td><td>36</td><td>Heparin</td><td>5 units</td><td>Now</td><td>Med Cart A, drawer 3</td><td>Jennifer</td></tr>
+    </tbody>
+  </table>
+
+  <div class="section-title"><span class="sym">✎</span> Facilitator Notes</div>
+  <textarea class="notes" placeholder="Type notes or observed participant behavior here."></textarea>
+</section>
+
+<section class="panel">
+  <h2 class="panel-title">⌁ Live Scenario Panel</h2>
+  <div class="card"><div class="card-icon">KT</div><div><div class="label">Wake Phrase</div><div class="value">Hey K.T.</div></div></div>
+  <div class="card"><div class="card-icon">♙</div><div><div class="label">Current Patient</div><div class="value" id="currentPatient">Jones, Room 43</div></div></div>
+  <div class="card alert"><div class="card-icon">🔔</div><div><div class="label">Active Alert</div><div class="value" id="activeAlert">Heparin, 5 units, due in 10 min</div></div></div>
+  <div class="card"><div class="card-icon">?</div><div><div class="label">Last User Query</div><div class="value" id="query">Hey K.T., when is the next med for Jones?</div></div></div>
+  <div class="card response"><div class="card-icon">🔊</div><div><div class="label">Last System Response</div><div class="value" id="response">Heparin. 5 units. Due in 10 minutes.</div></div></div>
+
+  <div class="voice-title">🎙 Voice Input Simulator</div>
+  <input id="voice" class="voice-input" placeholder="Try: Hey K.T., when is the next med for Jones, Room 43?">
+  <button class="primary" onclick="startVoiceInput()">🎙 &nbsp; Start Voice Input</button>
+  <button class="primary" onclick="matchResponse()">▷ &nbsp; Match Typed Response</button>
+  <button class="primary" onclick="initAudioContext(); airportChime();">🔊 &nbsp; Enable Audio</button>
+</section>
+
+<section class="panel">
+  <h2 class="panel-title">⚡ Quick Action Buttons</h2>
+
+  <div class="action-box">
+    <h3>Medication Timing Alerts</h3>
+    <div class="btn-grid">
+      <button class="action blue" onclick="say('Med admin alert','Med admin alert. Jones, Room 43. Heparin. 5 units. Due in 10 minutes.',true)">🔔 Jones Heparin 10 min</button>
+      <button class="action blue" onclick="say('Due-time alert','Med admin alert. Jones, Room 43. Heparin. 5 units. Due now.',true)">🔔 Jones Due Now</button>
+      <button class="action blue" onclick="say('Next Med Jones','Heparin. 5 units. Due in 10 minutes.',false)">⏭ Next Med Jones</button>
+      <button class="action blue" onclick="repeatLatest()">⟳ Repeat Updated</button>
+    </div>
+  </div>
+
+  <div class="action-box">
+    <h3>Medication Location</h3>
+    <div class="btn-grid">
+      <button class="action green" onclick="say('Med location alert','Med location alert. Heparin for Miller, Room 36, arrived in Tube 2.',true)">📦 Tube Arrival</button>
+      <button class="action green" onclick="say('Fentanyl Location','Pharmacy pickup bin.',false)">▣ Fentanyl Miller</button>
+      <button class="action green" onclick="say('Heparin Miller Location','Med Cart A, drawer 3.',false)">▣ Heparin Miller</button>
+      <button class="action green" onclick="say('Milrinone Davis Location','Pharmacy pickup bin.',false)">▣ Milrinone Davis</button>
+    </div>
+  </div>
+
+  <div class="action-box">
+    <h3>Staff Location / Request</h3>
+    <div class="btn-grid">
+      <button class="action purple" onclick="say('Staff request','Staff request. Ashley Smith requests you in Room 44.',true)">☎ Ashley Request</button>
+      <button class="action purple" onclick="whereStaff('Ashley Smith','ashley')">♙ Where is Ashley?</button>
+      <button class="action purple" onclick="whereStaff('Jennifer Johnson','jennifer')">♙ Where is Jennifer?</button>
+      <button class="action purple" onclick="say('Jennifer Johnson Location','Room 35.',false)">♙ Jennifer Room 35</button>
+    </div>
+  </div>
+
+  <div class="action-box">
+    <h3>Error Handling / Recovery Logic</h3>
+    <div class="btn-grid">
+      <button class="action gray" onclick="showRecoveryOptions('Unclear request')">? Start Recovery</button>
+      <button class="action gray wide" onclick="say('Recovery options','Please select an option: A for medication time, B for medication location, or C for staff location.',false)">A / B / C Recovery</button>
+      <button class="action gray" onclick="selectRecovery('A')">A: Medication Time</button>
+      <button class="action gray" onclick="selectRecovery('B')">B: Medication Location</button>
+      <button class="action gray wide" onclick="selectRecovery('C')">C: Staff Location</button>
+      <button class="action blue" onclick="airportChime()">Test Chime</button>
+      <button class="action red" onclick="stopAudio()">Hey K.T. Stop</button>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="footer">
+  <div class="quick">📖 Scenario Quick Reference</div>
+  <div class="footitem"><b>Scenario 1: Medication Timing</b><br>A asks patient name + room, then gives next med</div>
+  <div class="footitem"><b>Scenario 2: Medication Location</b><br>B asks patient name + room + med, then gives location</div>
+  <div class="footitem"><b>Scenario 3: Staff Location</b><br>C asks first and last name, then gives room</div>
+  <div class="ready">Test Status <span class="pill"><span class="dot"></span>Ready</span></div>
+</footer>
+
+<script>
+let last="Heparin. 5 units. Due in 10 minutes.";
+let recoveryMode=null;
+let recoveryData={};
+
+// Shared AudioContext for iOS compatibility.
+// iOS requires Web Audio to be unlocked by a user gesture before chimes can play.
+let audioContext = null;
+let audioUnlocked = false;
+
+function initAudioContext(){
+ try{
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if(!AudioContextClass){
+   console.log("Web Audio API not supported.");
+   return false;
+  }
+
+  if(!audioContext){
+   audioContext = new AudioContextClass();
+  }
+
+  if(audioContext.state === "suspended"){
+   audioContext.resume().then(()=>{
+    audioUnlocked = true;
+   }).catch(err=>console.log("Audio resume error:", err));
+  }else{
+   audioUnlocked = true;
+  }
+
+  return true;
+ }catch(e){
+  console.log("Audio init error:", e);
+  return false;
+ }
+}
+
+const meds=[
+ {patient:"jones",room:"43",med:"heparin",dose:"5 units",due:"10 minutes",location:"Med Cart A, drawer 2"},
+ {patient:"jones",room:"43",med:"furosemide",dose:"0.5 mg",due:"15 minutes",location:"Medication Room B"},
+ {patient:"martinez",room:"44",med:"milrinone",dose:"0.75 mcg",due:"20 minutes",location:"Med Cart B, drawer 1"},
+ {patient:"martinez",room:"44",med:"fentanyl",dose:"1 mcg",due:"5 minutes",location:"Med Cart A, drawer 3"},
+ {patient:"davis",room:"35",med:"furosemide",dose:"1 mg",due:"now",location:"Medication Room A"},
+ {patient:"davis",room:"35",med:"milrinone",dose:"0.5 mcg",due:"10 minutes",location:"Pharmacy pickup bin"},
+ {patient:"miller",room:"36",med:"fentanyl",dose:"2 mcg",due:"15 minutes",location:"Pharmacy pickup bin"},
+ {patient:"miller",room:"36",med:"heparin",dose:"5 units",due:"now",location:"Med Cart A, drawer 3"}
+];
+
+const staff=[
+ {name:"ashley smith",display:"Ashley Smith",roomSelect:"ashley"},
+ {name:"jennifer johnson",display:"Jennifer Johnson",roomSelect:"jennifer"}
+];
+
+function airportChime(){
+ try{
+  initAudioContext();
+
+  if(!audioContext){
+   return;
+  }
+
+  if(audioContext.state === "suspended"){
+   audioContext.resume();
+  }
+
+  const n = audioContext.currentTime;
+
+  // Louder, warmer, short airport-style two-tone cue.
+  [{f:740,t:0,d:.24},{f:560,t:.28,d:.28}].forEach(o=>{
+   const s = audioContext.createOscillator();
+   const g = audioContext.createGain();
+
+   s.type = "sine";
+   s.frequency.setValueAtTime(o.f,n+o.t);
+
+   g.gain.setValueAtTime(.0001,n+o.t);
+   g.gain.exponentialRampToValueAtTime(.26,n+o.t+.045);
+   g.gain.exponentialRampToValueAtTime(.0001,n+o.t+o.d);
+
+   s.connect(g).connect(audioContext.destination);
+
+   s.start(n+o.t);
+   s.stop(n+o.t+o.d+.04);
+  });
+ }catch(e){
+  console.log("Chime error:", e);
+ }
+}
+function chooseVoice(){
+ const voices = speechSynthesis.getVoices();
+ // Prefer warmer/enhanced voices when available on macOS/iOS.
+ return voices.find(v => /Samantha|Ava|Allison|Susan|Karen|Moira|Tessa|Female|Natural|Enhanced/i.test(v.name)) || voices[0] || null;
+}
+
+let speechDelayTimer = null;
+let stopBargeRecognition = null;
+let stopBargeActive = false;
+
+function clearSpeechDelay(){
+ if(speechDelayTimer){
+  clearTimeout(speechDelayTimer);
+  speechDelayTimer = null;
+ }
+}
+
+function stopBargeIn(){
+ stopBargeActive = false;
+ if(stopBargeRecognition){
+  try{ stopBargeRecognition.abort(); }catch(e){ try{ stopBargeRecognition.stop(); }catch(e2){} }
+  stopBargeRecognition = null;
+ }
+}
+
+function startStopBargeIn(){
+ // Lets the user interrupt a spoken announcement by saying “Hey KT stop.”
+ // This runs only while KT is speaking. It listens only for stop/cancel phrases.
+ if(stopRequested || stopBargeActive || !SpeechRecognition) return;
+ try{
+  stopBargeRecognition = new SpeechRecognition();
+  stopBargeRecognition.lang = "en-US";
+  stopBargeRecognition.interimResults = true;
+  stopBargeRecognition.continuous = true;
+  stopBargeRecognition.maxAlternatives = 1;
+  stopBargeRecognition.onstart = function(){ stopBargeActive = true; };
+  stopBargeRecognition.onresult = function(event){
+   let transcript = "";
+   for(let i=event.resultIndex; i<event.results.length; i++){
+    transcript += event.results[i][0].transcript + " ";
+   }
+   const q = normalize(transcript);
+   if(isStopCommand(q)){
+    document.getElementById("voice").value = transcript.trim();
+    stopAudio();
+   }
+  };
+  stopBargeRecognition.onerror = function(){ stopBargeActive = false; };
+  stopBargeRecognition.onend = function(){
+   stopBargeActive = false;
+   // If KT is still speaking, restart the stop listener so a long announcement can be interrupted.
+   if(!stopRequested && "speechSynthesis" in window && speechSynthesis.speaking){
+    setTimeout(startStopBargeIn, 120);
+   }
+  };
+  stopBargeRecognition.start();
+ }catch(e){
+  stopBargeActive = false;
+ }
+}
+
+function speak(text,withChime=false,onDone=null){
+ initAudioContext();
+ const clean=text.replace(/<br>/g," ");
+ clearSpeechDelay();
+ if("speechSynthesis" in window){
+  speechSynthesis.cancel();
+
+  const makeUtterance = () => {
+   const u = new SpeechSynthesisUtterance(clean);
+   u.onstart = function(){
+    if(!stopRequested) startStopBargeIn();
+   };
+   u.onend = function(){
+    stopBargeIn();
+    if(onDone && !stopRequested) onDone();
+   };
+   u.onerror = function(){
+    stopBargeIn();
+   };
+   const selected = chooseVoice();
+   if(selected) u.voice = selected;
+   u.rate = .82;
+   u.pitch = .92;
+   u.volume = .92;
+   return u;
+  };
+
+  if(withChime){
+   airportChime();
+   speechDelayTimer = setTimeout(()=>{
+    speechDelayTimer = null;
+    if(!stopRequested) speechSynthesis.speak(makeUtterance());
+   },800);
+  }
+  else{
+   if(!stopRequested) speechSynthesis.speak(makeUtterance());
+  }
+ }else{
+  if(withChime) airportChime();
+  if(onDone && !stopRequested) setTimeout(onDone, 400);
+ }
+}
+// Load voices on browsers that populate them asynchronously.
+if("speechSynthesis" in window){
+ speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices();
+}
+function say(query,response,withChime=false,onDone=null){
+ document.getElementById("query").innerText=query;
+ document.getElementById("response").innerHTML=response;
+ last=response.replace(/<br>/g," ");
+ speak(last,withChime,onDone);
+}
+function stopAudio(){
+ stopRequested = true;
+ pendingAutoListen = false;
+ clearSpeechDelay();
+ stopBargeIn();
+ if(recognition && isListening){
+  try{ recognition.abort(); }catch(e){ try{ recognition.stop(); }catch(e2){} }
+ }
+ isListening = false;
+ if("speechSynthesis" in window) speechSynthesis.cancel();
+ recoveryMode=null;
+ recoveryData={};
+ unclearAttemptCount = 0;
+ document.getElementById("response").innerHTML="Audio stopped.";
+ document.getElementById("query").innerText="Hey K.T. Stop";
+ last="Audio stopped.";
+}
+function whereStaff(name,id){
+ const room=document.getElementById(id).value;
+ say("Where is "+name+"?", "Nurse "+name+" is located in "+room+".", false);
+}
+function repeatLatest(){
+ say("Repeat latest alert","Repeating latest alert. Jones, Room 43. Heparin. 5 units. Due in 8 minutes.",false);
+}
+function normalize(q){return q.toLowerCase().replace(/[,.?]/g," ").replace(/\s+/g," ").trim();}
+function isStopCommand(q){
+ // Expanded stop detection for common speech-recognition outputs like “Katie” or “K T”.
+ return q.includes("hey kt stop") || q.includes("hey k t stop") || q.includes("kt stop") || q.includes("k t stop") ||
+        q.includes("hey katie stop") || q.includes("katie stop") || q.includes("hey katy stop") || q.includes("katy stop") ||
+        q === "stop" || q.includes("stop listening") || q.includes("cancel");
+}
+function patientFromQuery(q){
+ // Includes common speech-recognition variations.
+ if(q.includes("jones")||q.includes("joans")||q.includes("room 43")||q.includes("room forty three")) return "jones";
+ if(q.includes("martinez")||q.includes("martines")||q.includes("maryinez")||q.includes("martin ez")||q.includes("room 44")||q.includes("room forty four")) return "martinez";
+ if(q.includes("davis")||q.includes("room 35")||q.includes("room thirty five")) return "davis";
+ if(q.includes("miller")||q.includes("room 36")||q.includes("room thirty six")) return "miller";
+ return null;
+}
+function roomFromQuery(q){
+ if(q.includes("43")||q.includes("forty three")) return "43";
+ if(q.includes("44")||q.includes("forty four")||q.includes("for for")) return "44";
+ if(q.includes("35")||q.includes("thirty five")) return "35";
+ if(q.includes("36")||q.includes("thirty six")) return "36";
+ return null;
+}
+function medFromQuery(q){
+ for(const m of ["heparin","furosemide","milrinone","fentanyl"]){ if(q.includes(m)) return m; }
+ return null;
+}
+function staffFromQuery(q){
+ if(q.includes("ashley")) return staff[0];
+ if(q.includes("jennifer")) return staff[1];
+ return null;
+}
+function nextMed(patient){
+ const order={"now":-1,"5 minutes":5,"10 minutes":10,"15 minutes":15,"20 minutes":20};
+ return meds.filter(m=>m.patient===patient).sort((a,b)=>order[a.due]-order[b.due])[0];
+}
+function cap(s){return s.charAt(0).toUpperCase()+s.slice(1);}
+function duePhrase(due){return due==="now" ? "due now" : "due in "+due;}
+
+let pendingAutoListen = false;
+let stopRequested = false;
+let unclearAttemptCount = 0;
+function listenAfterPrompt(){
+ // Starts the microphone after KT finishes speaking the prompt.
+ // If the user says “Hey KT stop,” stopRequested prevents the system from re-opening the mic.
+ if(stopRequested || pendingAutoListen) return;
+ pendingAutoListen = true;
+ setTimeout(()=>{
+   pendingAutoListen = false;
+   if(!stopRequested && !isListening) startVoiceInput(true);
+ }, 450);
+}
+
+function routeTranscript(raw){
+ const q=normalize(raw || "");
+ document.getElementById("query").innerText=raw || "Voice input empty";
+
+ if(isStopCommand(q)) return stopAudio();
+
+ // Most important: if the system is in a recovery dialogue, treat the next speech
+ // as the answer to that question, even if it is only one word like "Davis".
+ if(recoveryMode && recoveryData && recoveryData.step){
+   return handleRecovery(raw,q);
+ }
+
+ return matchResponse();
+}
+
+function selectRecovery(option){
+ unclearAttemptCount = 0;
+ recoveryMode=option;
+ recoveryData={step:null, patient:null, room:null, med:null};
+ if(option==="A"){
+  recoveryData.step="patient";
+  return say("Option A selected","What is the patient’s last name?",false,listenAfterPrompt);
+ }
+ if(option==="B"){
+  recoveryData.step="patient";
+  return say("Option B selected","What is the patient’s last name?",false,listenAfterPrompt);
+ }
+ if(option==="C"){
+  recoveryData.step="staff";
+  return say("Option C selected","Please say the first and last name of the person you are looking for.",false,listenAfterPrompt);
+ }
+}
+
+function showRecoveryOptions(raw){
+ recoveryMode=null;
+ recoveryData={};
+ if(unclearAttemptCount < 2) unclearAttemptCount = 2;
+ return say(raw || "Unclear request","I did not understand. Please choose an option: A for medication time, B for medication location, or C for staff location.",false,listenAfterPrompt);
+}
+
+function handleUnclear(raw){
+ // First failed attempt: ask the user to repeat only.
+ // Second and later failed attempts: provide the A/B/C recovery menu.
+ unclearAttemptCount += 1;
+ if(unclearAttemptCount === 1){
+  recoveryMode=null;
+  recoveryData={};
+  return say(raw || "Unclear request","I did not understand. Please repeat.",false,listenAfterPrompt);
+ }
+ return showRecoveryOptions(raw);
+}
+
+function handleRecovery(raw,q){
+ if(!recoveryMode) return false;
+
+ if(recoveryMode==="A"){
+  if(recoveryData.step==="patient"){
+   const patient=patientFromQuery(q);
+   if(patient){
+    recoveryData.patient=patient;
+    recoveryData.step="room";
+    return say(raw,"What is the patient room number?",false,listenAfterPrompt);
+   }
+   return say(raw,"I did not catch the patient last name. Please say the patient’s last name.",false,listenAfterPrompt);
+  }
+  if(recoveryData.step==="room"){
+   const room=roomFromQuery(q);
+   if(room){
+    recoveryData.room=room;
+    const patient=recoveryData.patient || patientFromQuery(q);
+    const n=nextMed(patient);
+    recoveryMode=null; recoveryData={};
+    unclearAttemptCount = 0;
+    return say(raw,"The next med for the patient "+cap(patient)+", room "+room+", is "+cap(n.med)+", "+n.dose+", "+duePhrase(n.due)+".",false);
+   }
+   return say(raw,"I did not catch the room number. Please say the patient room number.",false,listenAfterPrompt);
+  }
+ }
+
+ if(recoveryMode==="B"){
+  if(recoveryData.step==="patient"){
+   const patient=patientFromQuery(q);
+   if(patient){
+    recoveryData.patient=patient;
+    recoveryData.step="room";
+    return say(raw,"What is the patient room number?",false,listenAfterPrompt);
+   }
+   return say(raw,"I did not catch the patient last name. Please say the patient’s last name.",false,listenAfterPrompt);
+  }
+  if(recoveryData.step==="room"){
+   const room=roomFromQuery(q);
+   if(room){
+    recoveryData.room=room;
+    recoveryData.step="med";
+    return say(raw,"What is the name of the medication?",false,listenAfterPrompt);
+   }
+   return say(raw,"I did not catch the room number. Please say the patient room number.",false,listenAfterPrompt);
+  }
+  if(recoveryData.step==="med"){
+   const med=medFromQuery(q);
+   if(med){
+    recoveryData.med=med;
+    const patient=recoveryData.patient;
+    const room=recoveryData.room;
+    const found=meds.find(m=>m.patient===patient && m.room===room && m.med===med);
+    recoveryMode=null; recoveryData={};
+    unclearAttemptCount = 0;
+    if(found) return say(raw,"The med "+cap(med)+" for the patient "+cap(patient)+", room "+room+", is located at "+found.location+".",false);
+    return say(raw,"I did not find that medication for the patient and room. Please repeat the command.",false);
+   }
+   return say(raw,"I did not catch the medication name. Please say the name of the medication.",false,listenAfterPrompt);
+  }
+ }
+
+ if(recoveryMode==="C"){
+  const person=staffFromQuery(q);
+  if(person){
+   const room=document.getElementById(person.roomSelect).value;
+   recoveryMode=null; recoveryData={};
+   unclearAttemptCount = 0;
+   return say(raw,"Nurse "+person.display+" is located in "+room+".",false);
+  }
+  return say(raw,"I did not catch the person’s name. Please say the first and last name of the person you are looking for.",false,listenAfterPrompt);
+ }
+ return false;
+}
+
+function matchResponse(){
+ const raw=document.getElementById("voice").value||"";
+ const q=normalize(raw);
+ document.getElementById("query").innerText=raw||"Voice input empty";
+
+ if(isStopCommand(q)) return stopAudio();
+
+ // If the system is waiting for a recovery answer, never send that one-word answer
+ // to the general command matcher.
+ if(recoveryMode && recoveryData && recoveryData.step){
+  return handleRecovery(raw,q);
+ }
+
+ if(q==="a"||q.includes("option a")||q.includes("medication time")) return selectRecovery("A");
+ if(q==="b"||q.includes("option b")||q.includes("medication location")) return selectRecovery("B");
+ if(q==="c"||q.includes("option c")||q.includes("staff location")) return selectRecovery("C");
+
+ if(q.includes("repeat")){ unclearAttemptCount = 0; return repeatLatest(); }
+
+ if(q.includes("ashley") && (q.includes("where")||q.includes("location"))){ unclearAttemptCount = 0; return whereStaff("Ashley Smith","ashley"); }
+ if(q.includes("jennifer") && (q.includes("where")||q.includes("location"))){ unclearAttemptCount = 0; return whereStaff("Jennifer Johnson","jennifer"); }
+ if(q.includes("staff request")||q.includes("ashley requests")){ unclearAttemptCount = 0; return say(raw,"Staff request. Ashley Smith requests you in Room 44.",true); }
+
+ const patient=patientFromQuery(q);
+ const med=medFromQuery(q);
+ const asksNext=q.includes("next med")||q.includes("next medication")||q.includes("when is")||q.includes("due next")||q.includes("what is next");
+ const asksLocation=q.includes("where")||q.includes("location")||q.includes("located")||q.includes("find");
+ const asksTime=q.includes("when")||q.includes("due")||q.includes("time");
+
+ if(asksNext && patient){
+  const n=nextMed(patient);
+  unclearAttemptCount = 0;
+  return say(raw, cap(n.med)+". "+n.dose+". Due "+(n.due==="now"?"now":"in "+n.due)+".", false);
+ }
+ if(asksLocation && patient && med){
+  const found=meds.find(m=>m.patient===patient && m.med===med);
+  if(found){ unclearAttemptCount = 0; return say(raw, found.location+".", false); }
+ }
+ if(asksTime && patient && med){
+  const found=meds.find(m=>m.patient===patient && m.med===med);
+  if(found){ unclearAttemptCount = 0; return say(raw, cap(found.med)+". "+found.dose+". Due "+(found.due==="now"?"now":"in "+found.due)+".", false); }
+ }
+
+ return handleUnclear(raw);
+}
+
+
+// Real microphone input: captures speech, places transcript into the existing text field,
+// then runs the same working response logic used by the typed simulator.
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+let isListening = false;
+
+function startVoiceInput(autoStarted=false){
+ const voiceInput = document.getElementById("voice");
+ const responseBox = document.getElementById("response");
+ const queryBox = document.getElementById("query");
+ if(!autoStarted) stopRequested = false;
+ if(stopRequested) return;
+
+ if(!SpeechRecognition){
+  responseBox.innerHTML = "Voice recognition is not supported in this browser. Please use Chrome or Edge.";
+  speak("Voice recognition is not supported in this browser. Please use Chrome or Edge.", false);
+  return;
+ }
+
+ if(isListening && recognition){
+  recognition.stop();
+  return;
+ }
+
+ try{
+  recognition = new SpeechRecognition();
+  recognition.lang = "en-US";
+  recognition.interimResults = false;
+  recognition.continuous = false;
+  recognition.maxAlternatives = 1;
+
+  recognition.onstart = function(){
+   isListening = true;
+   queryBox.innerText = "Listening...";
+   const promptMap = {patient:"Listening... Please say the patient last name.", room:"Listening... Please say the patient room number.", med:"Listening... Please say the medication name.", staff:"Listening... Please say the staff first and last name."};
+   responseBox.innerHTML = (recoveryMode && recoveryData && recoveryData.step && promptMap[recoveryData.step]) ? promptMap[recoveryData.step] : "Listening... Please speak your command.";
+  };
+
+  recognition.onresult = function(event){
+   const transcript = event.results[0][0].transcript;
+   voiceInput.value = transcript;
+   queryBox.innerText = transcript;
+   try{
+    routeTranscript(transcript);
+   }catch(err){
+    console.error(err);
+    responseBox.innerHTML = "Processing error: " + err.message;
+   }
+  };
+
+  recognition.onerror = function(event){
+   isListening = false;
+   let message = "Voice input error: " + event.error + ".";
+   if(event.error === "not-allowed" || event.error === "service-not-allowed"){
+    message = "Microphone permission is blocked. Allow microphone access for this page in Chrome settings.";
+   }
+   if(event.error === "no-speech"){
+    message = "I did not hear speech. Please press Start Voice Input and try again.";
+   }
+   responseBox.innerHTML = message;
+   queryBox.innerText = "Voice input error";
+  };
+
+  recognition.onend = function(){
+   isListening = false;
+  };
+
+  recognition.start();
+ }catch(e){
+  isListening = false;
+  responseBox.innerHTML = "Could not start voice input. Refresh the page and try again.";
+  console.error(e);
+ }
+}
+
+
+// Unlock audio from first user gesture for iOS Safari/Chrome.
+document.addEventListener("DOMContentLoaded", function(){
+ document.body.addEventListener("click", initAudioContext, { once:true });
+ document.body.addEventListener("touchstart", initAudioContext, { once:true });
+
+ document.querySelectorAll("button, input, select").forEach(el=>{
+  el.addEventListener("click", initAudioContext);
+  el.addEventListener("touchstart", initAudioContext);
+ });
+});
+</script>
+</body>
+</html>
