@@ -48,6 +48,30 @@ button.action{min-height:50px;border-radius:7px;background:white;font-weight:800
 .footitem{border-left:1px solid #dfe4ec;padding-left:22px;font-size:14px}.footitem b{color:#104a94}
 .ready{display:flex;align-items:center;justify-content:flex-end;gap:14px;font-weight:800}.pill{background:#dff6e6;color:#1f5130;border-radius:22px;padding:10px 18px}.dot{display:inline-block;width:11px;height:11px;border-radius:50%;background:#19c759;margin-right:8px}
 @media(max-width:1200px){.main{grid-template-columns:1fr}.panel{min-height:auto}.footer{grid-template-columns:1fr}}
+
+.kt-comm{
+  margin-top:18px;
+  border:1px solid #d7dde8;
+  border-radius:10px;
+  padding:14px;
+  background:#fbfdff;
+}
+.kt-comm label{
+  display:block;
+  font-weight:800;
+  color:#104a94;
+  margin-bottom:8px;
+}
+.kt-comm select{
+  margin-bottom:10px;
+}
+.kt-comm-status{
+  margin-top:8px;
+  color:#667085;
+  font-size:13px;
+  line-height:1.35;
+}
+
 </style>
 </head>
 <body>
@@ -97,6 +121,23 @@ button.action{min-height:50px;border-radius:7px;background:white;font-weight:800
   <input id="voice" class="voice-input" placeholder="Try: Hey K.T., when is the next med for Jones, Room 43?">
   <button class="primary" onclick="startVoiceInput()">🎙 &nbsp; Start Voice Input</button>
   <button class="primary" onclick="matchResponse()">▷ &nbsp; Match Typed Response</button>
+
+  <div class="kt-comm">
+    <label for="deviceSelect">KT Device Identity</label>
+    <select id="deviceSelect" onchange="setDeviceIdentity(this.value)">
+      <option value="KT1">KT1 — Ashley Smith</option>
+      <option value="KT2">KT2 — Jennifer Johnson</option>
+    </select>
+
+    <div class="btn-grid">
+      <button class="action purple" onclick="sendNurseMessage('KT2','Ashley Smith requests assistance in Room 44.')">Send to KT2</button>
+      <button class="action purple" onclick="sendNurseMessage('KT1','Jennifer Johnson requests assistance in Room 35.')">Send to KT1</button>
+    </div>
+
+    <div class="kt-comm-status" id="firebaseStatus">
+      Firebase communication not initialized yet.
+    </div>
+  </div>
   <button class="primary" onclick="initAudioContext(); airportChime();">🔊 &nbsp; Enable Audio</button>
 </section>
 
@@ -156,6 +197,10 @@ button.action{min-height:50px;border-radius:7px;background:white;font-weight:800
   <div class="ready">Test Status <span class="pill"><span class="dot"></span>Ready</span></div>
 </footer>
 
+
+<script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-database-compat.js"></script>
+
 <script>
 let last="Heparin. 5 units. Due in 10 minutes.";
 let recoveryMode=null;
@@ -208,6 +253,185 @@ const staff=[
  {name:"ashley smith",display:"Ashley Smith",roomSelect:"ashley"},
  {name:"jennifer johnson",display:"Jennifer Johnson",roomSelect:"jennifer"}
 ];
+
+
+// ==============================
+// Firebase real-time KT messaging
+// ==============================
+// Replace YOUR_API_KEY_HERE with the real API key from Firebase settings.
+const firebaseConfig = {
+  apiKey: "AIzaSyD3DSuxxlg1P-bjsgXhqCnvOtVkJ939qZE",
+  authDomain: "ktpro-327df.firebaseapp.com",
+  databaseURL: "https://ktpro-327df-default-rtdb.firebaseio.com",
+  projectId: "ktpro-327df",
+  storageBucket: "ktpro-327df.firebasestorage.app",
+  messagingSenderId: "958231714945",
+  appId: "1:958231714945:web:aa3ddc8688298d47bd0180"
+};
+
+let firebaseApp = null;
+let ktDatabase = null;
+let ktDeviceId = localStorage.getItem("ktDeviceId") || "KT1";
+let lastReceivedMessageKey = null;
+
+function currentNurseName(){
+ return ktDeviceId === "KT1" ? "Ashley Smith" : "Jennifer Johnson";
+}
+
+function targetNurseName(targetDevice){
+ return targetDevice === "KT1" ? "Ashley Smith" : "Jennifer Johnson";
+}
+
+function setDeviceIdentity(deviceId){
+ ktDeviceId = deviceId;
+ localStorage.setItem("ktDeviceId", ktDeviceId);
+
+ const status = document.getElementById("firebaseStatus");
+ if(status){
+  status.innerHTML = "This browser is now <b>"+ktDeviceId+"</b> assigned to <b>"+currentNurseName()+"</b>.";
+ }
+
+ say("Device identity updated", ktDeviceId+" is assigned to "+currentNurseName()+".", false);
+}
+
+function initFirebaseMessaging(){
+ const status = document.getElementById("firebaseStatus");
+
+ try{
+  if(firebaseConfig.apiKey === "YOUR_API_KEY_HERE"){
+   if(status){
+    status.innerHTML = "Firebase is waiting for your real API key. Replace YOUR_API_KEY_HERE in the HTML file.";
+   }
+   return;
+  }
+
+  if(!firebase.apps.length){
+   firebaseApp = firebase.initializeApp(firebaseConfig);
+  }else{
+   firebaseApp = firebase.app();
+  }
+
+  ktDatabase = firebase.database();
+
+  const selector = document.getElementById("deviceSelect");
+  if(selector){
+   selector.value = ktDeviceId;
+  }
+
+  if(status){
+   status.innerHTML = "Firebase connected. Current device: <b>"+ktDeviceId+"</b> / <b>"+currentNurseName()+"</b>.";
+  }
+
+  listenForIncomingMessages();
+
+ }catch(error){
+  console.error("Firebase init error:", error);
+  if(status){
+   status.innerText = "Firebase error: " + error.message;
+  }
+ }
+}
+
+function sendNurseMessage(targetDevice, messageText){
+ if(!ktDatabase){
+  const status = document.getElementById("firebaseStatus");
+  if(status){
+   status.innerHTML = "Firebase is not connected yet. Check API key and database setup.";
+  }
+  return;
+ }
+
+ const payload = {
+  fromDevice: ktDeviceId,
+  fromNurse: currentNurseName(),
+  toDevice: targetDevice,
+  toNurse: targetNurseName(targetDevice),
+  message: messageText,
+  timestamp: Date.now()
+ };
+
+ ktDatabase.ref("ktMessages").push(payload);
+
+ const spoken = "Message sent to "+payload.toNurse+".";
+ say("Send message", spoken, false);
+
+ const status = document.getElementById("firebaseStatus");
+ if(status){
+  status.innerHTML = "Sent to <b>"+payload.toDevice+"</b>: "+messageText;
+ }
+}
+
+function listenForIncomingMessages(){
+ if(!ktDatabase) return;
+
+ ktDatabase.ref("ktMessages").limitToLast(20).on("child_added", function(snapshot){
+  const key = snapshot.key;
+  const msg = snapshot.val();
+
+  if(!msg || key === lastReceivedMessageKey) return;
+
+  if(msg.timestamp && Date.now() - msg.timestamp > 120000) return;
+  if(msg.toDevice !== ktDeviceId) return;
+  if(msg.fromDevice === ktDeviceId) return;
+
+  lastReceivedMessageKey = key;
+
+  const spoken = "Message from " + msg.fromNurse + ". " + msg.message;
+
+  document.getElementById("query").innerText = "Incoming message from " + msg.fromNurse;
+  document.getElementById("response").innerHTML = spoken;
+  last = spoken;
+
+  speak(spoken, true);
+
+  const status = document.getElementById("firebaseStatus");
+  if(status){
+   status.innerHTML = "Received from <b>"+msg.fromDevice+"</b>: "+msg.message;
+  }
+ });
+}
+
+function handleCommunicationCommand(raw,q){
+ if(
+  q.includes("call jennifer") ||
+  q.includes("ask jennifer") ||
+  q.includes("send to jennifer") ||
+  q.includes("message jennifer") ||
+  q.includes("call nurse two") ||
+  q.includes("call nurse 2") ||
+  q.includes("send to kt2") ||
+  q.includes("send to k t 2")
+ ){
+  sendNurseMessage("KT2","Ashley Smith requests assistance in Room 44.");
+  return true;
+ }
+
+ if(
+  q.includes("call ashley") ||
+  q.includes("ask ashley") ||
+  q.includes("send to ashley") ||
+  q.includes("message ashley") ||
+  q.includes("call nurse one") ||
+  q.includes("call nurse 1") ||
+  q.includes("send to kt1") ||
+  q.includes("send to k t 1")
+ ){
+  sendNurseMessage("KT1","Jennifer Johnson requests assistance in Room 35.");
+  return true;
+ }
+
+ return false;
+}
+
+document.addEventListener("DOMContentLoaded", function(){
+ const selector = document.getElementById("deviceSelect");
+ if(selector){
+  selector.value = ktDeviceId;
+ }
+
+ initFirebaseMessaging();
+});
+
 
 function airportChime(){
  try{
@@ -439,6 +663,8 @@ function routeTranscript(raw){
 
  if(isStopCommand(q)) return stopAudio();
 
+ if(handleCommunicationCommand(raw,q)) return;
+
  // Most important: if the system is in a recovery dialogue, treat the next speech
  // as the answer to that question, even if it is only one word like "Davis".
  if(recoveryMode && recoveryData && recoveryData.step){
@@ -566,6 +792,8 @@ function matchResponse(){
  document.getElementById("query").innerText=raw||"Voice input empty";
 
  if(isStopCommand(q)) return stopAudio();
+
+ if(handleCommunicationCommand(raw,q)) return;
 
  // If the system is waiting for a recovery answer, never send that one-word answer
  // to the general command matcher.
