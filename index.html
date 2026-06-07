@@ -72,6 +72,20 @@ button.action{min-height:50px;border-radius:7px;background:white;font-weight:800
   line-height:1.35;
 }
 
+
+.wake-mode-box{
+  margin-top:14px;
+  border:1px solid #bdd5f4;
+  background:#f7fbff;
+  border-radius:10px;
+  padding:12px;
+  font-size:14px;
+  line-height:1.4;
+}
+.wake-mode-box b{
+  color:#104a94;
+}
+
 </style>
 </head>
 <body>
@@ -121,6 +135,14 @@ button.action{min-height:50px;border-radius:7px;background:white;font-weight:800
   <input id="voice" class="voice-input" placeholder="Try: Hey K.T., when is the next med for Jones, Room 43?">
   <button class="primary" onclick="startVoiceInput()">🎙 &nbsp; Start Voice Input</button>
   <button class="primary" onclick="matchResponse()">▷ &nbsp; Match Typed Response</button>
+  <button class="primary" onclick="toggleWakeMode()">🎧 &nbsp; Start Hey KT Mode</button>
+
+  <div class="wake-mode-box">
+    <b>Hey KT Mode:</b>
+    <span id="wakeModeStatus">Off</span><br>
+    Say <b>“Hey KT”</b>, wait for the chime, then say any command:
+    next med, medication location, staff location, repeat, stop, or call another nurse.
+  </div>
 
   <div class="kt-comm">
     <label for="deviceSelect">KT Device Identity</label>
@@ -584,6 +606,11 @@ function say(query,response,withChime=false,onDone=null){
 function stopAudio(){
  stopRequested = true;
  pendingAutoListen = false;
+ commandModeAfterWake = false;
+ wakeModeEnabled = false;
+ updateWakeModeStatus("Off");
+ if(wakeRestartTimer){ clearTimeout(wakeRestartTimer); wakeRestartTimer = null; }
+ if(wakeRecognition){ try{ wakeRecognition.abort(); }catch(e){} wakeRecognition = null; }
  clearSpeechDelay();
  stopBargeIn();
  if(recognition && isListening){
@@ -646,6 +673,15 @@ function duePhrase(due){return due==="now" ? "due now" : "due in "+due;}
 let pendingAutoListen = false;
 let stopRequested = false;
 let unclearAttemptCount = 0;
+
+// Universal wake phrase mode.
+// After one tap, the page listens for “Hey KT.”
+// Once detected, it routes the next command through the same command logic as typed/voice input.
+let wakeModeEnabled = false;
+let wakeRecognition = null;
+let wakeListening = false;
+let commandModeAfterWake = false;
+let wakeRestartTimer = null;
 function listenAfterPrompt(){
  // Starts the microphone after KT finishes speaking the prompt.
  // If the user says “Hey KT stop,” stopRequested prevents the system from re-opening the mic.
@@ -656,6 +692,163 @@ function listenAfterPrompt(){
    if(!stopRequested && !isListening) startVoiceInput(true);
  }, 450);
 }
+
+
+function updateWakeModeStatus(text){
+ const el = document.getElementById("wakeModeStatus");
+ if(el) el.innerText = text;
+}
+
+function toggleWakeMode(){
+ if(wakeModeEnabled){
+  stopWakeMode();
+ }else{
+  startWakeMode();
+ }
+}
+
+function startWakeMode(){
+ stopRequested = false;
+ wakeModeEnabled = true;
+ commandModeAfterWake = false;
+ updateWakeModeStatus("Listening for “Hey KT”...");
+ initAudioContext();
+
+ if(wakeRecognition){
+  try{ wakeRecognition.abort(); }catch(e){}
+  wakeRecognition = null;
+ }
+
+ startWakeRecognitionLoop();
+}
+
+function stopWakeMode(){
+ wakeModeEnabled = false;
+ commandModeAfterWake = false;
+ updateWakeModeStatus("Off");
+
+ if(wakeRestartTimer){
+  clearTimeout(wakeRestartTimer);
+  wakeRestartTimer = null;
+ }
+
+ if(wakeRecognition){
+  try{ wakeRecognition.abort(); }catch(e){ try{ wakeRecognition.stop(); }catch(e2){} }
+  wakeRecognition = null;
+ }
+
+ wakeListening = false;
+}
+
+function startWakeRecognitionLoop(){
+ if(!wakeModeEnabled || stopRequested || wakeListening) return;
+
+ if(!SpeechRecognition){
+  updateWakeModeStatus("Wake mode unavailable in this browser.");
+  return;
+ }
+
+ try{
+  wakeRecognition = new SpeechRecognition();
+  wakeRecognition.lang = "en-US";
+  wakeRecognition.interimResults = true;
+  wakeRecognition.continuous = false;
+  wakeRecognition.maxAlternatives = 1;
+
+  wakeRecognition.onstart = function(){
+   wakeListening = true;
+   updateWakeModeStatus(commandModeAfterWake ? "Listening for command..." : "Listening for “Hey KT”...");
+  };
+
+  wakeRecognition.onresult = function(event){
+   let transcript = "";
+
+   for(let i=event.resultIndex; i<event.results.length; i++){
+    transcript += event.results[i][0].transcript + " ";
+   }
+
+   transcript = transcript.trim();
+   const q = normalize(transcript);
+
+   document.getElementById("voice").value = transcript;
+   document.getElementById("query").innerText = transcript;
+
+   if(isStopCommand(q)){
+    stopWakeMode();
+    stopAudio();
+    return;
+   }
+
+   if(!commandModeAfterWake){
+    if(q.includes("hey kt") || q.includes("hey k t") || q.includes("hey katie") || q.includes("hey katy")){
+     commandModeAfterWake = true;
+     airportChime();
+     updateWakeModeStatus("Wake phrase detected. Say your command.");
+
+     try{ wakeRecognition.stop(); }catch(e){}
+     wakeListening = false;
+
+     wakeRestartTimer = setTimeout(()=>{
+      startWakeRecognitionLoop();
+     }, 650);
+
+     return;
+    }
+   }else{
+    // Universal routing: this handles ALL existing requests:
+    // meds, locations, staff lookup, repeat, recovery, stop, and Firebase nurse messages.
+    commandModeAfterWake = false;
+    routeTranscript(transcript);
+    updateWakeModeStatus("Listening for “Hey KT”...");
+
+    try{ wakeRecognition.stop(); }catch(e){}
+    wakeListening = false;
+
+    wakeRestartTimer = setTimeout(()=>{
+     startWakeRecognitionLoop();
+    }, 900);
+
+    return;
+   }
+  };
+
+  wakeRecognition.onerror = function(event){
+   wakeListening = false;
+
+   if(!wakeModeEnabled || stopRequested) return;
+
+   if(event.error === "not-allowed" || event.error === "service-not-allowed"){
+    updateWakeModeStatus("Microphone blocked. Allow mic permission.");
+    wakeModeEnabled = false;
+    return;
+   }
+
+   updateWakeModeStatus("Listening for “Hey KT”...");
+
+   wakeRestartTimer = setTimeout(()=>{
+    startWakeRecognitionLoop();
+   }, 700);
+  };
+
+  wakeRecognition.onend = function(){
+   wakeListening = false;
+
+   if(!wakeModeEnabled || stopRequested) return;
+
+   wakeRestartTimer = setTimeout(()=>{
+    startWakeRecognitionLoop();
+   }, 450);
+  };
+
+  wakeRecognition.start();
+
+ }catch(e){
+  wakeListening = false;
+  console.error("Wake mode error:", e);
+  updateWakeModeStatus("Wake mode error. Tap Start Hey KT Mode again.");
+ }
+}
+
 
 function routeTranscript(raw){
  const q=normalize(raw || "");
