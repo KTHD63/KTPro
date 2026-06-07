@@ -86,6 +86,31 @@ button.action{min-height:50px;border-radius:7px;background:white;font-weight:800
   color:#104a94;
 }
 
+
+.dev-tools-box{
+  margin-top:12px;
+  border:1px dashed #b9c2d0;
+  border-radius:10px;
+  padding:10px;
+  background:#fafafa;
+  font-size:13px;
+  color:#667085;
+}
+.dev-tools-box summary{
+  cursor:pointer;
+  font-weight:800;
+  color:#384152;
+}
+.session-controls{
+  margin-top:14px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+}
+.session-controls .primary{
+  margin-top:0;
+}
+
 </style>
 </head>
 <body>
@@ -133,16 +158,23 @@ button.action{min-height:50px;border-radius:7px;background:white;font-weight:800
 
   <div class="voice-title">🎙 Voice Input Simulator</div>
   <input id="voice" class="voice-input" placeholder="Try: Hey K.T., when is the next med for Jones, Room 43?">
-  <button class="primary" onclick="startVoiceInput()">🎙 &nbsp; Start Voice Input</button>
-  <button class="primary" onclick="matchResponse()">▷ &nbsp; Match Typed Response</button>
-  <button class="primary" onclick="toggleWakeMode()">🎧 &nbsp; Start Hey KT Mode</button>
+  <div class="session-controls">
+    <button class="primary" onclick="initAudioContext()">🔊 &nbsp; Enable Audio</button>
+    <button class="primary" onclick="toggleWakeMode()">🎧 &nbsp; Start KT Session</button>
+  </div>
 
   <div class="wake-mode-box">
-    <b>Hey KT Mode:</b>
+    <b>KT Session:</b>
     <span id="wakeModeStatus">Off</span><br>
-    Say <b>“Hey KT”</b>, wait for the chime, then say any command:
+    After starting the session, say <b>“Hey KT”</b>, wait for the chime, then say any command:
     next med, medication location, staff location, repeat, stop, or call another nurse.
   </div>
+
+  <details class="dev-tools-box">
+    <summary>Developer tools / fallback controls</summary>
+    <button class="primary" onclick="startVoiceInput()">🎙 &nbsp; Start Voice Input</button>
+    <button class="primary" onclick="matchResponse()">▷ &nbsp; Match Typed Response</button>
+  </details>
 
   <div class="kt-comm">
     <label for="deviceSelect">KT Device Identity</label>
@@ -414,35 +446,33 @@ function listenForIncomingMessages(){
 }
 
 function handleCommunicationCommand(raw,q){
- if(
-  q.includes("call jennifer") ||
-  q.includes("ask jennifer") ||
-  q.includes("send to jennifer") ||
-  q.includes("message jennifer") ||
-  q.includes("call nurse two") ||
-  q.includes("call nurse 2") ||
-  q.includes("send to kt2") ||
-  q.includes("send to k t 2")
- ){
+ const wantsSend = q.includes("call") || q.includes("called") || q.includes("ask") || q.includes("send") || q.includes("message") || q.includes("tell") || q.includes("contact") || q.includes("request");
+ const targetJennifer = q.includes("jennifer") || q.includes("jenifer") || q.includes("jenn") || q.includes("nurse two") || q.includes("nurse 2") || q.includes("kt2") || q.includes("k t 2");
+ const targetAshley = q.includes("ashley") || q.includes("ashly") || q.includes("nurse one") || q.includes("nurse 1") || q.includes("kt1") || q.includes("k t 1");
+
+ if(wantsSend && targetJennifer){
   sendNurseMessage("KT2","Ashley Smith requests assistance in Room 44.");
   return true;
  }
 
- if(
-  q.includes("call ashley") ||
-  q.includes("ask ashley") ||
-  q.includes("send to ashley") ||
-  q.includes("message ashley") ||
-  q.includes("call nurse one") ||
-  q.includes("call nurse 1") ||
-  q.includes("send to kt1") ||
-  q.includes("send to k t 1")
- ){
+ if(wantsSend && targetAshley){
   sendNurseMessage("KT1","Jennifer Johnson requests assistance in Room 35.");
   return true;
  }
 
  return false;
+}
+
+function removeWakePhrase(q){
+ return q
+  .replace(/hey\s+k\s*t/g," ")
+  .replace(/hey\s+kt/g," ")
+  .replace(/hey\s+katie/g," ")
+  .replace(/hey\s+katy/g," ")
+  .replace(/okay\s+kt/g," ")
+  .replace(/ok\s+kt/g," ")
+  .replace(/\s+/g," ")
+  .trim();
 }
 
 document.addEventListener("DOMContentLoaded", function(){
@@ -608,6 +638,7 @@ function stopAudio(){
  pendingAutoListen = false;
  commandModeAfterWake = false;
  wakeModeEnabled = false;
+ updateKtSessionButtonLabel();
  updateWakeModeStatus("Off");
  if(wakeRestartTimer){ clearTimeout(wakeRestartTimer); wakeRestartTimer = null; }
  if(wakeRecognition){ try{ wakeRecognition.abort(); }catch(e){} wakeRecognition = null; }
@@ -694,6 +725,16 @@ function listenAfterPrompt(){
 }
 
 
+
+function updateKtSessionButtonLabel(){
+ const buttons = document.querySelectorAll("button");
+ buttons.forEach((btn)=>{
+  if(btn.getAttribute("onclick") === "toggleWakeMode()"){
+   btn.innerHTML = wakeModeEnabled ? "⏹ &nbsp; Stop KT Session" : "🎧 &nbsp; Start KT Session";
+  }
+ });
+}
+
 function updateWakeModeStatus(text){
  const el = document.getElementById("wakeModeStatus");
  if(el) el.innerText = text;
@@ -711,7 +752,8 @@ function startWakeMode(){
  stopRequested = false;
  wakeModeEnabled = true;
  commandModeAfterWake = false;
- updateWakeModeStatus("Listening for “Hey KT”...");
+ updateKtSessionButtonLabel();
+ updateWakeModeStatus("Session active. Listening for “Hey KT”...");
  initAudioContext();
 
  if(wakeRecognition){
@@ -725,6 +767,7 @@ function startWakeMode(){
 function stopWakeMode(){
  wakeModeEnabled = false;
  commandModeAfterWake = false;
+ updateKtSessionButtonLabel();
  updateWakeModeStatus("Off");
 
  if(wakeRestartTimer){
@@ -744,7 +787,7 @@ function startWakeRecognitionLoop(){
  if(!wakeModeEnabled || stopRequested || wakeListening) return;
 
  if(!SpeechRecognition){
-  updateWakeModeStatus("Wake mode unavailable in this browser.");
+  updateWakeModeStatus("KT session unavailable in this browser.");
   return;
  }
 
@@ -780,10 +823,33 @@ function startWakeRecognitionLoop(){
    }
 
    if(!commandModeAfterWake){
-    if(q.includes("hey kt") || q.includes("hey k t") || q.includes("hey katie") || q.includes("hey katy")){
+    const heardWake = q.includes("hey kt") || q.includes("hey k t") || q.includes("hey katie") || q.includes("hey katy") || q.includes("okay kt") || q.includes("ok kt");
+
+    if(heardWake){
+     const commandAfterWake = removeWakePhrase(q);
+
+     // Supports both interaction styles:
+     // 1) “Hey KT” → chime → next utterance is command
+     // 2) “Hey KT call Jennifer” → process immediately
+     if(commandAfterWake && commandAfterWake.length > 2){
+      airportChime();
+      updateWakeModeStatus("Wake phrase + command detected. Processing command...");
+      commandModeAfterWake = false;
+      routeTranscript(commandAfterWake);
+
+      try{ wakeRecognition.stop(); }catch(e){}
+      wakeListening = false;
+
+      wakeRestartTimer = setTimeout(()=>{
+       startWakeRecognitionLoop();
+      }, 900);
+
+      return;
+     }
+
      commandModeAfterWake = true;
      airportChime();
-     updateWakeModeStatus("Wake phrase detected. Say your command.");
+     updateWakeModeStatus("KT awake. Say your command.");
 
      try{ wakeRecognition.stop(); }catch(e){}
      wakeListening = false;
@@ -799,7 +865,7 @@ function startWakeRecognitionLoop(){
     // meds, locations, staff lookup, repeat, recovery, stop, and Firebase nurse messages.
     commandModeAfterWake = false;
     routeTranscript(transcript);
-    updateWakeModeStatus("Listening for “Hey KT”...");
+    updateWakeModeStatus("Session active. Listening for “Hey KT”...");
 
     try{ wakeRecognition.stop(); }catch(e){}
     wakeListening = false;
@@ -823,7 +889,7 @@ function startWakeRecognitionLoop(){
     return;
    }
 
-   updateWakeModeStatus("Listening for “Hey KT”...");
+   updateWakeModeStatus("Session active. Listening for “Hey KT”...");
 
    wakeRestartTimer = setTimeout(()=>{
     startWakeRecognitionLoop();
@@ -845,7 +911,7 @@ function startWakeRecognitionLoop(){
  }catch(e){
   wakeListening = false;
   console.error("Wake mode error:", e);
-  updateWakeModeStatus("Wake mode error. Tap Start Hey KT Mode again.");
+  updateWakeModeStatus("KT session error. Tap Start KT Session again.");
  }
 }
 
